@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        // R
+        "REditorSupport.r",
+        "RDebugger.r-debugger",
+        // LaTeX
+        "James-Yu.latex-workshop",
+        "stkb.rewrap",
+        // Markdown
+        "DavidAnson.vscode-markdownlint",
+    ],
+}

@@ -1,0 +1,47 @@
+{
+    "[r][debian-control.r]": {
+        // tidyverse code style
+        "editor.rulers": [
+            80,
+        ],
+        "editor.tabSize": 2,
+        // https://yihui.org/en/2018/04/rprofile-trailing-newline/
+        "files.insertFinalNewline": true,
+    },
+    // BibTeX
+    "latex-workshop.bibtex-format.sort.enabled": true,
+    "latex-workshop.bibtex-format.sortby": [
+        "type",
+        "key",
+    ],
+    "latex-workshop.bibtex-fields.sort.enabled": true,
+    "latex-workshop.bibtex-fields.order": [
+        "author",
+        "title",
+        "journal",
+        "editor",
+        "booktitle",
+        "publisher",
+        "address",
+        "chapter",
+        "volume",
+        "number",
+        "pages",
+        "month",
+        "year",
+        "doi",
+    ],
+    "latex-workshop.bibtex-format.trailingComma": true,
+    // LaTeX
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.latex.outDir": "output",
+    "latex-workshop.latexindent.args": [
+        // default value
+        "-c",
+        "%DIR%/",
+        "%TMPFILE%",
+        "-y=defaultIndent: '%INDENT%'",
+        // end of default value
+        "-l",
+    ],
+}

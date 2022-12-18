@@ -1,0 +1,11 @@
+onlyOneBackUp: 1
+
+defaultIndent: "    "
+
+indentRules:
+  abstract: ""
+  cname: ""
+  highlight: ""
+  jnlcitation: ""
+  footnote: ""
+  textit: ""

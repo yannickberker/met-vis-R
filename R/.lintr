@@ -1,0 +1,6 @@
+# Ensure lintr>2.0.1 or dev [remotes::install_github("jimhester/lintr")] for
+# spaces_left_parentheses_linter, see https://github.com/r-lib/lintr/issues/878
+
+linters: with_defaults(
+  open_curly_linter = NULL # https://github.com/jimhester/lintr/issues/487
+  )

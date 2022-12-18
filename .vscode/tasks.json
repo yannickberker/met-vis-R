@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "Generate Plots and Typeset Manuscript",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Generate Plots",
+                "Typeset Manuscript",
+                "Typeset Manuscript with Highlight",
+            ],
+        },
+        {
+            "label": "Generate Plots",
+            "command": "Rscript",
+            "args": [
+                "R/plots.R",
+            ],
+            "problemMatcher": [],
+        },
+        {
+            "label": "Typeset Manuscript",
+            "command": "latexmk",
+            "args": [
+                "TeX/manuscript.tex",
+            ],
+            "problemMatcher": [],
+        },
+        {
+            "label": "Typeset Manuscript with Highlight",
+            "command": "latexmk",
+            "args": [
+                "TeX/manuscript.tex",
+                "-jobname=manuscript-highlight"
+            ],
+            "problemMatcher": [],
+        },
+    ],
+}

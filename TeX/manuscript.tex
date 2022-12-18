@@ -1,0 +1,477 @@
+% Based on
+% - AMA-lato.zip (1cdc979518c99529e679d9a6fefbae8a443236c0)
+% - AMA-lato_New.zip (21aa37afca10078d881c2e7c6d0bf4965376eff4)
+% from https://analyticalsciencejournals.onlinelibrary.wiley.com/hub/journal/10991492/homepage/latex_class_file.htm
+
+% Begin my commands
+\RequirePackage{etex}
+\RequirePackage{silence}
+
+\PassOptionsToPackage{colorlinks=true, allcolors=blue}{hyperref}
+\RequirePackage{lmodern}
+
+\RequirePackage{pdftexcmds}
+\makeatletter
+\newcommand{\includeplot}[3][]{%
+    \noindent%
+    \ifcase\pdf@shellescape\or%
+    \immediate\write18{Rscript ../R/plots/#2.R}%
+    \or\fi%
+    \includegraphics[#1]{#2.pdf}%
+    \caption{#3}
+    \label{fig:#2}%
+}
+\makeatother
+
+% https://tex.stackexchange.com/q/94178/
+\DeclareRobustCommand*{\citen}[2][]{%
+  \begingroup
+    \romannumeral-`\x
+    \setcitestyle{numbers}%
+    \cite[#1]{#2}%
+  \endgroup
+}
+\newcommand{\fcite}[3]{#1 et al.,\cite{#1#2} figure~#3}
+\newcommand{\fref}[1]{Figure~\ref{fig:#1}}
+\newcommand{\frefs}[2]{Figures~\ref{fig:#1} and~\ref{fig:#2}}
+\newcommand{\sref}[1]{section~\ref{sec:#1}}
+
+\RequirePackage{etoolbox}
+\newcommand{\highlight}[1]{%
+  \expandafter\ifstrequal\expandafter{\jobname}{manuscript-highlight}%
+  {{\color{blue}#1}}{#1}}
+% End my commands
+
+\documentclass[AMA,LATO1COL]{WileyNJD-v2}
+
+% Begin my commands
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\graphicspath{{../R/output}}
+\RequirePackage{orcidlink}
+\newcommand\orcidline[1]{\orcidlink{#1} \url{https://orcid.org/#1}}
+\WarningFilter{latex}{Unused global option(s):}
+\WarningFilter{latexfont}{Some font shapes were not available}
+\WarningFilter{latexfont}{Font shape `T1/lato-TLF/m/sc' undefined}
+\WarningFilter{hyperref}{Ignoring empty anchor}
+% End my commands
+
+\articletype{Special Issue Research Article}%
+
+\received{16 June 2022}
+\revised{14 October 2022}
+\accepted{30 October 2022}
+
+\doiheadtext{DOI: 10.1002/nbm.4865}
+
+\raggedbottom
+
+\begin{document}
+
+\title{Visualizing metabolomics data with R}
+
+\author[1,2,3]{Yannick Berker}
+
+\author[4]{Isabella H. Muti}
+
+\author[4]{Leo L. Cheng}
+
+\authormark{BERKER \textsc{et al}}
+
+
+\address[1]{\orgname{Hopp Children's Cancer Center Heidelberg (KiTZ)}, \orgaddress{\country{Germany}}}
+
+\address[2]{\orgdiv{Clinical Cooperation Unit Pediatric Oncology}, \orgname{German Cancer Research Center (DKFZ) and German Cancer Consortium (DKTK)}, \orgaddress{\country{Germany}}}
+
+\address[3]{\orgname{National Center for Tumor Diseases (NCT) Heidelberg}, \orgaddress{\country{Germany}}}
+
+\address[4]{\orgdiv{Departments of Radiology and Pathology, Harvard Medical School}, \orgname{Massachusetts General Hospital}, \orgaddress{\state{MA}, \country{USA}}}
+
+\corres{Yannick Berker, Clinical Cooperation Unit Pediatric Oncology, German Cancer Research Center (DKFZ), Im Neuenheimer Feld 280, 69120 Heidelberg, Germany. \\\email{yannick.berker@alumni.dkfz.de}}
+
+\presentaddress{Yannick Berker, Siemens Healthineers, Molecular Imaging, 91301 Forchheim, Germany.}
+
+\abstract{In communicating scientific results, convincing data visualization is
+of utmost importance. Especially in metabolomics, results based on large numbers
+of dimensions and variables necessitate particular attention in order to convey
+their message unambiguously to the reader; and in the era of open science,
+traceability and reproducibility are becoming increasingly important. This paper
+describes the use of the R programming language to visualize published
+metabolomics data resulting from ex-vivo NMR spectroscopy and mass spectrometry
+experiments with a special focus on reproducibility, including example figures
+as well as associated R code for ease of reuse. Examples include various types
+of plots (bar plots, swarm plots, and violin plots; volcano plots, heatmaps,
+Euler diagrams, Kaplan-Meier survival plots) and annotations (groupings,
+intra-group line connections, significance brackets, text annotations).
+Advantages of code-generated plots as well as advanced techniques and best
+practices are discussed.}
+
+\keywords{data visualization, metabolomics, R}
+
+\jnlcitation{\cname{%
+\author{Berker Y},
+\author{Muti IH},
+\author{Cheng LL}}.
+\ctitle{Visualizing metabolomics data with R}, \cjournal{NMR in Biomedicine}, \cyear{2022};e4865. \\doi:\href{https://doi.org/10.1002/nbm.4865}{10.1002/nbm.4865}}
+
+\maketitle
+
+\section{Introduction}
+
+Visualization of experimental data is an important issue in any data science. In
+metabolomics, however, we meet specific challenges due to the high
+dimensionality of the data: in a usual experiment, hundreds of metabolites each
+are quantified for dozens, hundreds, or even thousands of samples and analyzed
+using various statistical methods, for groups and subgroups. As a result, the
+generation of representations that are accurate, convincing, visually appealing,
+and consistent is a complicated endeavor.
+
+There is no shortage of tools to generate almost any kind of plot, ranging from
+general-purpose office-suite applications (Microsoft Excel, Apple Numbers, etc.)
+to statistics software suites (SAS, JMP, etc.), to dedicated plotting libraries
+often programmable via high-level programming languages (Veusz;
+\texttt{Matplotlib}, Scikit-plot, and \texttt{plotnine} for Python;
+\texttt{ggplot2} for R; MATLAB; etc.). In this tutorial paper, we showcase the
+use of the R programming language for data visualization with a focus on
+metabolomics applications. We chose R, for it is open source and freely
+available, and with \texttt{ggplot2}, \cite{ggplot2} it offers arguably the most
+mature implementation of The Grammar of Graphics, \cite{gog} enabling the
+separation of data to be plotted from the plot semantics to a high degree. We
+will establish necessary terminology through several examples and present best
+practices to generate and compose consistent, high-quality, publication-ready
+figure files ready for use in posters, presentations, and journal papers without
+any postprocessing.
+
+All code used to generate and save the plots in this paper is available for
+reuse at \url{https://github.com/yannickberker/met-vis-R}. Functions saving
+plots to figure files can be combined with almost any other type of plot:
+readers may take further inspiration from websites such as The R Graph Gallery.
+\cite{RGraphs}
+
+\subsection{What this tutorial does not cover}
+
+This tutorial focuses on an introduction into technical aspects of data
+visualization using examples inspired by metabolomics findings---it does not
+intend to cover (metabolomic) data analysis in any way, such as optimal ways of
+\highlight{dimensionality reduction,} data stratification and aggregation,
+choosing appropriate statistical tests, correcting for multiple testing, or
+identifying outliers. We will assume that any data analysis has been implemented
+and carried out and, while later amendments of the data are possible, that the
+structure of the data to be visualized is determined and the essential data is
+given in one data file per plot. For simplicity, we will use data stored in
+Microsoft Excel-compatible files for maximum user convenience while maintaining
+portability.
+
+While the included code examples may be helpful as a start, implementation
+details are not generally a topic of this tutorial. Users should refer to the
+link collection titled \textit{Big Book of R}, specifically chapter 12 (Data
+Visualization), \cite{BigBookOfR} and ultimately to the reference manuals of R
+and its respective packages. These will also be helpful in implementing the
+ideas for advanced data representations put forth in \sref{MoreData}.
+
+Using R code for data visualization does not necessarily contradict using an
+interactive user interface: users less experienced in writing (R) code may
+prefer generating basic plots using a \texttt{Shiny}-based, interactive user
+interface offered by the \texttt{esquisse} package, which allows exporting of
+not only the generated plot, but also the code to reproduce the code
+non-interactively later. While this tutorial does not cover this use, the basic
+recommendations apply equally to the code thus generated.
+
+\section{Generating different types of plots in R}
+
+The following examples reproduce plots from the published literature, and we are
+indebted to the authors of the respective publications for their most helpful
+cooperation. The plots cover various aspects of data visualization, in
+particular: types of plots (bar plots, swarm plots, and violin plots; volcano
+plots, heatmaps, Euer diagrams, Kaplan-Meier survival plots) and annotations
+(groupings, intra-group line connections, significance brackets, text
+annotations, colors, etc.).
+
+\subsection{Bar plot}
+
+Bar plots, also known as bar charts/graphs, are used to visualize categorical
+data (see \fref{bars}). Categories are typically plotted on the horizontal axis,
+and the heights or lengths of the bars correspond to their respective values for
+the given measured variable. To assist readers, procedures for using the code at
+\url{https://github.com/yannickberker/met-vis-R} to generate the plots in this
+article are illustrated there using the example of this bar plot and can be
+applied to the others presented in this article.
+
+\begin{figure}
+    \centering
+    \includeplot[width=3in]{bars}{Bar plot using data from \fcite{Yoneshiro}{2019}{1(b)}}
+\end{figure}
+
+\subsection{Swarm plot}
+
+Swarm plots show the distribution of \highlight{a continuous numerical attribute
+across another, categorical attribute}. Swarm plots include all data points, so
+they are best used for relatively small data sets. See \fref{swarm}.
+
+\begin{figure}
+    \centering
+    \includeplot{swarm}{Swarm plot using data from \fcite{Hagan}{2019}{S3}}
+\end{figure}
+
+\subsection{Violin plots}
+
+\highlight{Similar to swarm plots,} violin plots are used to plot
+\highlight{continuous} numerical data \highlight{across different categories}.
+They are similar to box plots in that they show the distribution of the data,
+but they also include the density of each variable and therefore show peaks in
+the data. The wider sections of the violin plot show areas of higher data point
+density while the narrower sections represent a lower probability of having a
+data point. See \fref{violin_swarm} \highlight{for an overlaid comparison of
+violin and swarm plots.}
+
+\begin{figure}
+    \centering
+    \includeplot[]{violin_swarm}{Violin/swarm plot using data from \fcite{Hagan}{2019}{S2C}}
+\end{figure}
+
+\subsubsection{Volcano plot}
+
+\highlight{Scatter plots are commonly used to plot two paired continuous
+numerical attributes, and used to visualize correlations. They are also ideally
+suited to visualize the result of dimensionality reduction techniques such as
+principal component analysis, t-SNE, \cite{vanderMaaten2008} or UMAP.
+\cite{McInnes2018}}
+
+A volcano plot is a \highlight{special} scatter plot that depicts significance
+(e.g., p value) versus magnitude of change (e.g. fold change) from a statistical
+test. Volcano plots are useful in that they show large changes within the data
+set that have statistical significance. The negative logarithm of the p value is
+typically plotted on the \highlight{vertical} (y-)axis, and the
+\highlight{horizontal} (x-)axis depicts the logarithm of the fold change. As a
+result, more significant data points with lower p values are represented at the
+top of the plot. Data points on the far left and right of the plot are also of
+interest, as they represent points with large fold changes. See \fref{volcano}.
+
+\begin{figure}
+    \centering
+    \includeplot[width=4in]{volcano}{Volcano plot using data from \fcite{Wang}{2021}{1c}}
+\end{figure}
+
+\subsection{Heatmap}
+
+Heatmaps are two-dimensional plots that represent the magnitude of a data
+association using differences in color and intensity. In a typical cluster
+heatmap, data associations are visualized as a matrix of cells, with each row
+and column representing a category, and each cell is shaded with a color and
+intensity that corresponds to an association level. See \fref{heatmap}.
+
+\begin{figure}
+    \centering
+    \includeplot[angle=90,width=6in]{heatmap}{Heatmap using data from \fcite{Rom}{2020}{6}}
+\end{figure}
+
+\highlight{Heatmaps provide a unique opportunity to visualize the results of
+correlation analyses. In a typical setting, a \textit{correlation heatmap} is
+calculated by computing correlation coefficients between pairs of attributes A
+and B along all samples; correlation strengths are typically color-coded. Such a
+correlation heatmap is typically symmetric as correlation coefficients do not
+consider the order of their arguments, and each half of such a correlation
+heatmap carries the full amount of information.
+
+This concept can be extended in metabolomics, where paired samples from the same
+subject (e.g., serum and tissue) are often studied. The aforementioned symmetry
+can be broken by computing correlation coefficient across samples, namely,
+correlating attribute A from tissue samples with attribute B from serum samples,
+and vice versa, providing an additional correlation-heatmap and thus, an
+additional layer of visualization.}
+
+\subsection{Euler diagrams}
+
+A Euler diagram is used to represent the relationships between sets of data.
+They are similar to Venn diagrams in that they have overlapping regions, which
+show the shared characteristics between sets. They are distinct from Venn
+diagrams, however, in that they do not have to show an entire set. They are thus
+useful for representing complex data sets in a simplified manner. See
+\fref{euler}.
+
+Of special note, comparing with \fcite{Shen}{2020}{S4} our current plot reflects
+both the relationships and area proportions between subgroups in the plots,
+while the original plots are only illustrative of the area proportions between
+groups.
+
+\begin{figure}
+    \centering
+    \includeplot[width=4in]{euler}{Euler diagram using data from \fcite{Shen}{2020}{S4}}
+\end{figure}
+
+\subsection{Kaplan-Meier plot}
+
+The Kaplan-Meier plot is used to represent the estimated survival function from
+a data set. In practice, it is often used in medical research to show the
+proportion of patients who survive a certain amount of time with a disease with
+or without progression. The plot is visualized as a curve of declining
+horizontal steps that approach the survival function. See \fref{kaplan_meier}.
+
+\begin{figure}
+    \centering
+    \includeplot[width=4in]{kaplan_meier}{Kaplan-Meier plot using data from \fcite{Agathocleous}{2017}{5(a,b)}}
+\end{figure}
+
+\highlight{\section{Combining plots}
+
+Visual representations often benefit from juxtaposition of related information,
+to emphasize contrast or similarity. As such, \textit{grids} are a way of
+automatically combining subplots, giving the authors great control over
+placement and arrangement of multiple plots that will usually survive the
+copyediting process. See \fref{grid} for an example combining three of the
+previous figures; notably, the grid code reuses the code of the individual
+figures, avoiding code duplication and hence potential inconsistencies; and each
+individual figure is laid out according to the new geometry without stretching
+or squeezing. Similarly, \fref{euler} sets two plots side by side using the
+\texttt{cowplot} package and \frefs{swarm}{violin_swarm} demonstrate the concept
+of \texttt{ggplot2} \textit{facets} (compare with the following section).}
+
+\begin{figure}
+    \centering
+    \includeplot[width=\textwidth]{grid}{Grid combining the following figures. A,~\fref{swarm}. B,~\fref{bars}. C,~\fref{volcano}}
+\end{figure}
+
+\section{Advanced data representations}
+\label{sec:MoreData}
+
+In addition to the example plots showcased above, which usually direct the
+reader's attention towards a single aspect of the underlying data, several
+advanced techniques shall also be mentioned.
+
+\highlight{As shown above}, grids are one way to produce pixel-perfect
+arrangements and compositions of subfigures in one figure panel within R,
+skipping the time-consuming manual composition (which is also error-prone,
+especially in case of updates to subplots). Using similar techniques,
+\textit{inserts} can be created, effectively embedding a smaller plot in the
+unused space of another.
+
+\highlight{Automating the concept of grids,} facets \highlight{(in
+\texttt{ggplot2} terminology)} are a way \highlight{of repeating} a plot for
+several \highlight{to many} subgroups of the data, as indicated in
+\frefs{swarm}{violin_swarm} for two subgroups, respectively. While this use of
+multifaceted figures seems to be rare in some journals where space constraints
+are applied, they are a great way of inspecting longitudinal data by
+distributing them along one dimension while keeping all other aesthetics (e.g.,
+axes, colors, etc.) consistent.
+
+Finally, \textit{interactive} and \textit{dynamic} plots can be created to allow
+the reader to interact with larger, multidimensional data, allowing inspection
+of individual data points in detail or selecting facets on the fly. These kinds
+of plots are usually hosted online as a supplement to static visualization in a
+manuscript.
+
+\highlight{\section{Exporting figures}
+\label{sec:Export}
+
+Exporting figures in the format requested by outlet guidelines (which include
+the file format, figure dimensions, and figure resolution) can be a struggle in
+and of itself. Fortunately, R provides a host of graphic devices in the built-in
+\texttt{grDevices} package, natively supporting the export to vector (PDF, PS,
+SVG) or bitmap (PNG, JPEG, BMP, TIFF) formats. Alternative graphic devices are
+available via the \texttt{Cairo} or \texttt{ragg} packages, for instance.}
+
+\highlight{The code provided with this manuscript provides helper functions
+\texttt{(gg)save\textunderscore{}cairo\textunderscore{}pdf\textunderscore{}and\textunderscore{}png}
+to export plots at chosen dimensions and resolution in both PDF and PNG formats,
+covering the most popular of vector and bitmap formats, respectively.}
+
+\section{Best practices and advantages}
+
+Best practices for using R code to visualize metabolic data rest on the usual
+best practices for writing computer programming code, including coding style and
+version control.
+
+Code should follow a style guide -- such as in the case of R code, the one put
+forth by \texttt{tidyverse}. \cite{tidyverse_style} Users choosing to adhere to
+this style are supported by packages such as \texttt{styler} \cite{styler} to
+automatically reformat code and \texttt{lintr} \cite{lintr} to perform automated
+checks of conformance (especially for topics not covered by \texttt{lintr}, such
+as syntactically and logically incorrect code). While the benefit for a single
+plot author may seem small, other readers of the code -- including the author's
+future self -- will be grateful. Remember that \textit{code is written once but
+read many times}.\footnote{While it is challenging to attribute this statement
+to one author, the basic idea dates back to at least the 1980s, when ``emphasis
+was placed on program readability over ease of writing'' already. \cite{ada83}}
+Along the same lines, code should be commented to ease future reading and reuse,
+keeping in mind that code comments should not (only) describe \textit{what} the
+code is doing, but also \textit{why}.
+
+Just like other unformatted text files, \texttt{.R} files are useful to keep
+under version control, for example, using systems such as the de-facto standard
+\texttt{git}(\url{https://git-scm.com/}). The decentralized, server-less nature
+of \texttt{git} allows migrating repositories online or offline at any point in
+time, and \texttt{git} repositories can be hosted (with a basic set of
+\highlight{attributes}) for free at services such as GitHub.com, GitLab.com, and
+others. In fact, \texttt{.R} files to generate the plots in this tutorial are
+available at \url{https://github.com/yannickberker/met-vis-R}. While the
+learning curve is steep for command-line use of \texttt{git}, integrated
+development environments such as RStudio (\url{https://www.rstudio.com})
+commonly integrate support for basic \texttt{git} operations through a graphical
+user interface.
+
+Developing R code under version control, if used consistently, means that past
+versions of plots can be reproduced without keeping a stash of files named
+\verb|Plot3_v2_final_YB_LLC_final_larger.png| and the like. Plots of identical
+content can later be re-produced in different variants \highlight{(compare with
+\sref{Export})}, e.g., at different resolutions and file sizes, or to generate
+landscape bitmaps in PNG format for PowerPoint presentations as well as portrait
+vector-graphics in PDF format at journal-specific figure dimensions. (Generally,
+the author saves every plot in both file formats.) If plots are created with all
+proper annotations within R, supposedly final paper figures can be amended in
+minutes to resize the resulting figure, or to insert additional data or remove
+outliers or patient samples after late retraction of consent (god forbid!). This
+becomes an invaluable time-saver, especially if multi-panel figures are composed
+within R, removing any need to repeatedly re-compose figures in Acrobat or
+PowerPoint.
+
+R is extensible by a universe of general-purposed as well as domain-specific
+packages. For maximum reproducibility, reusability, and security, users should
+choose packages and package versions that are published in recognized and
+reviewed repositories such as CRAN (\url{https://cran.r-project.org/}) or
+BioConductor (\url{https://bioconductor.org/}).
+
+\section{Alternatives}
+
+R and \texttt{ggplot2} may be an excellent basis for a data visualization
+technology stack, but it is far from being the only choice -- for example, if
+research code in written in Python rather than in R. Interfacing is usually
+possible by writing data file to disk in commonly-known file formats such as
+comma-separated values, or by calling R code from Python processes using
+dedicated packages such as \texttt{rpy2} (\url{https://rpy2.github.io/}). Users
+who wish to stay within the Python world may prefer using \texttt{matplotlib}
+(\url{https://matplotlib.org/}), which features a MATLAB-inspired application
+programming interface, or its extension \texttt{plotnine} which applies the
+Grammar-of-Graphics concept to Python (while inheriting several of
+\texttt{matplotlib}'s inherent limitations).
+
+\section{Conclusions}
+
+Given the vastness of the universe of R packages, R presents itself as an ideal
+choice to generate most, if not all, of today's metabolomics data
+visualizations, promising a high degree of reproducibility especially if paired
+with R-based data processing.
+
+\subsection*{Acknowledgements}
+
+We sincerely thank the authors for sending us their original data presented in
+their original papers that allowed us to consider and to reproduce them here
+using R: Takeshi Yoneshiro and Shingo Kajimura, Thomas Hagan and Bali Pulendran,
+Kivanç Birsoy, Oren Rom and Y. Eugene Chen, Tiannan Guo, Claudia Langenberg,
+Noam Bar and Eran Segal. This work was supported in part by the National
+Institute on Aging of the National Institutes of Health under award number
+R01AG070257. The content is solely the responsibility of the authors and does
+not necessarily represent the official views of the National Institutes of
+Health. Open Access funding enabled and organized by Projekt DEAL.
+
+\subsection*{Author contributions}
+\textbf{Yannick Berker}: methodology; data curation; software; writing---original draft preparation; writing---review and editing. %
+\textbf{Isabella H. Muti}: validation; writing---original draft preparation; writing---review and editing. %
+\textbf{Leo L. Cheng}: conceptualization; funding acquisition; supervision; resources; writing---original draft preparation; writing---review and editing.
+
+\subsection*{ORCID}
+\textit{Yannick Berker}   \orcidline{0000-0002-6707-0834} \\
+\textit{Isabella H. Muti} \orcidline{0000-0002-5216-2306} \\
+\textit{Leo L. Cheng}     \orcidline{0000-0001-5975-5406}
+
+\bibliography{references}
+
+\end{document}
